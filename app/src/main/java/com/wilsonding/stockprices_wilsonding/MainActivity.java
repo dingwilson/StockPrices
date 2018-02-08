@@ -9,13 +9,18 @@
 
 package com.wilsonding.stockprices_wilsonding;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.AsyncTask;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+
 import java.net.*;
 import java.io.*;
 
@@ -24,25 +29,66 @@ public class MainActivity extends AppCompatActivity {
 
     private DownloadTickerDataTask downloadTask;
 
+
+    /****************************************************************************
+     * Hides progress bar and list view until needed. Sets onclick listener for search button
+     * Written By: Wilson Ding
+     ****************************************************************************/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+        progressBar.setVisibility(View.INVISIBLE);  // set progressbar to be invisible until button press
+
+        ListView listView = (ListView) findViewById(R.id.listView);
+
+        listView.setVisibility(View.INVISIBLE); // hide list view until successful retrieval of data
 
         Button searchButton = (Button) findViewById(R.id.button);
 
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                EditText editText = (EditText) findViewById(R.id.editText);
 
-                if (downloadTask != null) {
-                    downloadTask.cancel(true);
+                String symbol = editText.getText().toString();
+
+                if (!symbol.isEmpty()) {
+                    if (downloadTask != null) {
+                        downloadTask.cancel(true);
+                    }
+
+                    ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+                    progressBar.setVisibility(View.VISIBLE);    // show progress bar
+
+                    downloadTask = new DownloadTickerDataTask();
+                    downloadTask.execute(symbol);
                 }
-
-                downloadTask = new DownloadTickerDataTask();
-                downloadTask.execute("INTC");
             }
         });
+    }
+
+    /****************************************************************************
+     * Creates an alert with the given message
+     * Written By: Wilson Ding
+     ****************************************************************************/
+    public void sendErrorAlert() {
+        AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+
+        alertDialog.setTitle("Error");
+        alertDialog.setMessage("The symbol was not found or took too long to load. Please try again.");
+        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+
+        alertDialog.show();
     }
 
     /****************************************************************************
@@ -82,29 +128,44 @@ public class MainActivity extends AppCompatActivity {
                     reader.close();
                     isr.close();
 
-                    System.out.println(builder.toString());
-
                     return builder.toString();
                 // failed to download ticker data
                 } else {
-                    System.out.println("Fail");
+                    return null;
                 }
             } catch(IOException e) {
                 e.printStackTrace();
-                return "";
+                return null;
             }
-
-            return "";
         }
 
         /****************************************************************************
-         * Updates UI with given ticker data csv
+         * Updates listView with given ticker data csv
          * Written By: Wilson Ding
          ****************************************************************************/
         @Override
         protected void onPostExecute(String result) {
-            super.onPostExecute(result);
-            // do stuff
+            ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+            progressBar.setVisibility(View.INVISIBLE);  // hide progress bar
+
+            if (result != null) {
+                ListView listView = (ListView) findViewById(R.id.listView);
+
+                listView.setVisibility(View.VISIBLE);   // set listView to be visible
+
+                String[] lines = result.split("\\r?\\n");   // split result by newline into array
+
+                ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, lines);
+
+                listView.setAdapter(adapter);
+            } else {
+                ListView listView = (ListView) findViewById(R.id.listView);
+
+                listView.setVisibility(View.INVISIBLE); // hide list view until successful retrieval of data
+
+                sendErrorAlert();
+            }
         }
     }
 }
