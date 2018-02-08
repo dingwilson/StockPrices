@@ -156,7 +156,30 @@ public class MainActivity extends AppCompatActivity {
 
                 String[] lines = result.split("\\r?\\n");   // split result by newline into array
 
-                ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, lines);
+                String[] cleanedUpLines = new String[lines.length - 1];   // the array we will display with listView
+
+                // add headers for each, and cleanup CSV values to make it look pretty
+                for (int i = 1; i < lines.length; i++) {    // skip the initial headers in CSV
+                    String[] parts = lines[i].trim().split(",");  // split each data point into date, open, high, low, close, volume, adj close
+
+                    // string builder to create a "pretty" version of the CSV data
+                    StringBuilder sb = new StringBuilder();
+
+                    sb.append(new String("Date:  " + parts[0] + "\n\n"));  // date
+                    sb.append(new String("Open:  " + String.format("%.2f", Double.parseDouble(parts[1])))); // open
+                    sb.append(new String("  Close:  " + String.format("%.2f", Double.parseDouble(parts[4]))));    // close
+                    sb.append("\n");
+                    sb.append(new String("High: " + String.format("%.2f", Double.parseDouble(parts[2])))); // high
+                    sb.append(new String("  Low:  " + String.format("%.2f", Double.parseDouble(parts[3]))));    // low
+                    sb.append("\n\n");
+                    sb.append(new String("Volume:  " + parts[5]));  // volume
+                    sb.append("\n");
+                    sb.append(new String("Adj Close:  " + String.format("%.2f", Double.parseDouble(parts[6]))));    // adj close
+
+                    cleanedUpLines[i-1] = sb.toString();    // add to cleanedUpLines for display
+                }
+
+                ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, cleanedUpLines);
 
                 listView.setAdapter(adapter);
             } else {
