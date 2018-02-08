@@ -1,52 +1,110 @@
+/******************************************************************************
+ * This is a stock price picker. Users enter a stock quote ticker symbol, then
+ * receive relevant price information about that stock.
+ *
+ * Name:   Wilson Ding
+ * ID:     wxd130130
+ * Class:  CS 4301
+ ******************************************************************************/
+
 package com.wilsonding.stockprices_wilsonding;
 
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Button;
+import java.net.*;
+import java.io.*;
+
 
 public class MainActivity extends AppCompatActivity {
+
+    private DownloadTickerDataTask downloadTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        Button searchButton = (Button) findViewById(R.id.button);
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+
+                if (downloadTask != null) {
+                    downloadTask.cancel(true);
+                }
+
+                downloadTask = new DownloadTickerDataTask();
+                downloadTask.execute("INTC");
             }
         });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+    /****************************************************************************
+     * Public class that downloads ticker data, after taking in a ticker from editText
+     * Written By: Wilson Ding
+     ****************************************************************************/
+    private class DownloadTickerDataTask extends AsyncTask<String, Void, String> {
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+        /****************************************************************************
+         * Takes in a ticker from the editText, then asynchronously gets ticker info
+         * Written By: Wilson Ding
+         ****************************************************************************/
+        @Override
+        protected String doInBackground(String... params) {
+            try {
+                URL url = new URL("http://utdallas.edu/~John.Cole/2017Spring/" + params[0] + ".txt");
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(2000);    // 2 second connection timeout
+                connection.setReadTimeout(45000);   // 45 second read timeout
+
+                connection.connect();
+
+                // was able to successfully download ticker data
+                if (connection.getResponseCode() == 200) {
+                    InputStream responseInputStream = connection.getInputStream();
+
+                    InputStreamReader isr = new InputStreamReader(responseInputStream, "UTF-8");
+                    BufferedReader reader = new BufferedReader(isr);
+                    StringBuilder builder = new StringBuilder();
+
+                    for (String line = null; (line = reader.readLine()) != null;) {
+                        builder.append(line).append("\n");
+                    }
+
+                    reader.close();
+                    isr.close();
+
+                    System.out.println(builder.toString());
+
+                    return builder.toString();
+                // failed to download ticker data
+                } else {
+                    System.out.println("Fail");
+                }
+            } catch(IOException e) {
+                e.printStackTrace();
+                return "";
+            }
+
+            return "";
         }
 
-        return super.onOptionsItemSelected(item);
+        /****************************************************************************
+         * Updates UI with given ticker data csv
+         * Written By: Wilson Ding
+         ****************************************************************************/
+        @Override
+        protected void onPostExecute(String result) {
+            super.onPostExecute(result);
+            // do stuff
+        }
     }
 }
